@@ -4,21 +4,21 @@
 
 <template lang="html">
   <div class="imageClip">
-    <div class="imgSourceBox">
-      <img class="imgSource" :src="src">
-    </div>
+    <!--<div class="imgSourceBox">-->
+      <!--<img class="imgSource" :src="src">-->
+    <!--</div>-->
     <div class="handleBox">
-      <div class="handleBt">
+      <div class="handleBt" @click="sliderBtClick(0)">
         <div class="minus"></div>
       </div>
-      <div class="sliderBox">
+      <div class="sliderBox" :style="sliderBoxStyle" ref="sliderBox">
         <div
           :class="['slider', { dragging: dragging }]"
           @mousedown.prevent="mousedown"
-          :style="{ left: sliderLeft + 'px' }"
+          :style="{ left: sliderLeft - 10 + 'px' }"
         ></div>
       </div>
-      <div class="handleBt">
+      <div class="handleBt" @click="sliderBtClick(1)">
         <div class="plus"></div>
       </div>
     </div>
@@ -33,11 +33,28 @@
     },
     data () {
       return {
-        sliderLeft: -10,
-        startX: 0,
+        sliderPre: 0.5,
         newPosition: 0,
-        dragging: false
+        startX: 0,
+        dragging: false,
+        maxX: 480
       }
+    },
+    computed: {
+      sliderBoxStyle: function () {
+        let pre = this.sliderPre * 100
+        return {
+          background: `linear-gradient(90deg, #4db3ff ${pre}%, #F1F6FA ${pre}%)`
+        }
+      },
+
+      sliderLeft: function () {
+        return this.sliderPre * this.maxX
+      }
+    },
+    mounted () {
+      this.maxX = this.$refs.sliderBox.offsetWidth
+//      this.setSlider()
     },
     methods: {
       mousedown (e) {
@@ -48,14 +65,53 @@
       },
 
       mouseup (e) {
+        let left = this.maxX * this.sliderPre + e.clientX - this.startX
         this.dragging = false
-        this.newPosition = this.newPosition + e.clientX - this.startX
         window.removeEventListener('mousemove', this.mouseover)
         window.removeEventListener('mouseup', this.mouseup)
+
+        if (left > this.maxX) {
+          this.sliderPre = 1
+        } else if (left < 0) {
+          this.sliderPre = 0
+        } else {
+          this.sliderPre = (left / this.maxX).toFixed(2)
+        }
       },
 
       mouseover (e) {
-        this.sliderLeft = this.newPosition + e.clientX - this.startX
+//        let left = this.maxX * this.sliderPre + e.clientX - this.startX
+//        if (left < 0) {
+//          this.sliderPre = 0
+//        } else if (left > this.maxX) {
+//          this.sliderPre = 1
+//        } else {
+//          this.sliderPre = (left / this.maxX).toFixed(2)
+//        }
+
+        let distance = e.clientX - this.startX
+        console.log(distance)
+        if (distance > 0) {
+          this.sliderPre = this.sliderPre + Number((distance / this.maxX).toFixed(2))
+        } else {
+          this.sliderPre = this.sliderPre - Number((distance / this.maxX).toFixed(2))
+        }
+        console.log(this.sliderPre)
+      },
+
+      setSlider () {
+        this.sliderLeft = this.maxX * this.sliderPre
+        this.newPosition = this.maxX * this.sliderPre
+      },
+
+      sliderBtClick (type) {
+        if (type === 0) {
+          this.sliderPre = this.sliderPre - 0.01
+//          this.setSlider()
+        } else {
+          this.sliderPre = this.sliderPre + 0.01
+//          this.setSlider()
+        }
       }
     }
   }
@@ -131,13 +187,12 @@
   .sliderBox {
     width: 480px;
     height: 6px;
-    background: #F1F6FA;
     border-radius: 8px;
     position: relative;
   }
 
   .slider {
-    background-image: linear-gradient(-180deg, #FFFFFF 0%, #F0F5F9 97%);
+    background: linear-gradient(-180deg, #FFFFFF 0%, #F0F5F9 97%);
     border: 1px solid #E1E6EB;
     width: 20px;
     height: 20px;
@@ -145,21 +200,19 @@
     box-sizing: border-box;
     position: absolute;
     top: calc(50% - 10px);
-    cursor: -webkit-grabbing;
-    cursor: grab;
     user-select: none;
-    transition: .1s;
+    cursor: grab;
   }
 
   .slider:hover {
     transform: scale(1.25);
-    background-image: linear-gradient(-180deg, #FFFFFF 0%, #4db3ff 97%);
+    background: linear-gradient(-180deg, #FFFFFF 0%, #4db3ff 97%);
     border-color: #4db3ff;
   }
 
   .slider.dragging {
     transform: scale(1.25);
-    background-image: linear-gradient(-180deg, #FFFFFF 0%, #4db3ff 97%);
+    background: linear-gradient(-180deg, #FFFFFF 0%, #4db3ff 97%);
     border-color: #4db3ff;
     cursor: grabbing;
   }
