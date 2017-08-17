@@ -4,9 +4,9 @@
 
 <template lang="html">
   <div class="imageClip">
-    <!--<div class="imgSourceBox">-->
-      <!--<img class="imgSource" :src="src">-->
-    <!--</div>-->
+    <div class="imgSourceBox">
+      <img class="imgSource" :src="src">
+    </div>
     <div class="handleBox">
       <div class="handleBt" @click="sliderBtClick(0)">
         <div class="minus"></div>
@@ -33,11 +33,11 @@
     },
     data () {
       return {
-        sliderPre: 0.5,
+        sliderPre: 0,
         newPosition: 0,
         startX: 0,
-        dragging: false,
-        maxX: 480
+        maxX: 480,
+        dragging: false
       }
     },
     computed: {
@@ -54,7 +54,8 @@
     },
     mounted () {
       this.maxX = this.$refs.sliderBox.offsetWidth
-//      this.setSlider()
+      this.sliderPre = 0.5
+      this.newPosition = this.maxX * this.sliderPre
     },
     methods: {
       mousedown (e) {
@@ -65,53 +66,43 @@
       },
 
       mouseup (e) {
-        let left = this.maxX * this.sliderPre + e.clientX - this.startX
+        let left = this.newPosition + e.clientX - this.startX
         this.dragging = false
         window.removeEventListener('mousemove', this.mouseover)
         window.removeEventListener('mouseup', this.mouseup)
 
         if (left > this.maxX) {
           this.sliderPre = 1
+          this.newPosition = this.maxX
         } else if (left < 0) {
           this.sliderPre = 0
+          this.newPosition = 0
+        } else {
+          this.sliderPre = (left / this.maxX).toFixed(2)
+          this.newPosition = left
+        }
+      },
+
+      mouseover (e) {
+        let left = this.newPosition + e.clientX - this.startX
+        if (left < 0) {
+          this.sliderPre = 0
+        } else if (left > this.maxX) {
+          this.sliderPre = 1
         } else {
           this.sliderPre = (left / this.maxX).toFixed(2)
         }
       },
 
-      mouseover (e) {
-//        let left = this.maxX * this.sliderPre + e.clientX - this.startX
-//        if (left < 0) {
-//          this.sliderPre = 0
-//        } else if (left > this.maxX) {
-//          this.sliderPre = 1
-//        } else {
-//          this.sliderPre = (left / this.maxX).toFixed(2)
-//        }
-
-        let distance = e.clientX - this.startX
-        console.log(distance)
-        if (distance > 0) {
-          this.sliderPre = this.sliderPre + Number((distance / this.maxX).toFixed(2))
-        } else {
-          this.sliderPre = this.sliderPre - Number((distance / this.maxX).toFixed(2))
-        }
-        console.log(this.sliderPre)
-      },
-
-      setSlider () {
-        this.sliderLeft = this.maxX * this.sliderPre
-        this.newPosition = this.maxX * this.sliderPre
-      },
-
       sliderBtClick (type) {
         if (type === 0) {
-          this.sliderPre = this.sliderPre - 0.01
-//          this.setSlider()
+          if (this.sliderPre <= 0) return
+          this.sliderPre = (parseFloat(this.sliderPre) - 0.01).toFixed(2)
         } else {
-          this.sliderPre = this.sliderPre + 0.01
-//          this.setSlider()
+          if (this.sliderPre >= 1) return
+          this.sliderPre = (parseFloat(this.sliderPre) + 0.01).toFixed(2)
         }
+        this.newPosition = this.maxX * this.sliderPre
       }
     }
   }
