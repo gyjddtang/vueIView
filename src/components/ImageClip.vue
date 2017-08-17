@@ -5,7 +5,7 @@
 <template lang="html">
   <div class="imageClip">
     <div class="imgSourceBox">
-      <img class="imgSource" :src="src">
+      <img class="imgSource" :src="src" :style="imgSource">
     </div>
     <div class="handleBox">
       <div class="handleBt" @click="sliderBtClick(0)">
@@ -15,7 +15,7 @@
         <div
           :class="['slider', { dragging: dragging }]"
           @mousedown.prevent="mousedown"
-          :style="{ left: sliderLeft - 10 + 'px' }"
+          :style="sliderStyle"
         ></div>
       </div>
       <div class="handleBt" @click="sliderBtClick(1)">
@@ -48,17 +48,25 @@
         }
       },
 
-      sliderLeft: function () {
-        return this.sliderPre * this.maxX
+      sliderStyle: function () {
+        return {
+          left: `${this.maxX * this.sliderPre - 10}px`
+        }
+      },
+
+      imgSource: function () {
+        return {
+          transform: `scale(${this.sliderPre})`
+        }
       }
     },
     mounted () {
       this.maxX = this.$refs.sliderBox.offsetWidth
       this.sliderPre = 0.5
-      this.newPosition = this.maxX * this.sliderPre
     },
     methods: {
       mousedown (e) {
+        if (this.dragging) return
         this.dragging = true
         this.startX = e.clientX
         window.addEventListener('mousemove', this.mouseover)
@@ -66,43 +74,43 @@
       },
 
       mouseup (e) {
-        let left = this.newPosition + e.clientX - this.startX
         this.dragging = false
         window.removeEventListener('mousemove', this.mouseover)
         window.removeEventListener('mouseup', this.mouseup)
 
-        if (left > this.maxX) {
-          this.sliderPre = 1
-          this.newPosition = this.maxX
-        } else if (left < 0) {
-          this.sliderPre = 0
-          this.newPosition = 0
-        } else {
-          this.sliderPre = (left / this.maxX).toFixed(2)
-          this.newPosition = left
-        }
+        this.setSliderPre(e)
       },
 
       mouseover (e) {
-        let left = this.newPosition + e.clientX - this.startX
-        if (left < 0) {
+        this.setSliderPre(e)
+      },
+
+      setSliderPre (e) {
+        let left = this.maxX * this.sliderPre + e.clientX - this.startX
+        this.startX = e.clientX
+        if (left <= 0) {
           this.sliderPre = 0
-        } else if (left > this.maxX) {
+        } else if (left >= this.maxX) {
           this.sliderPre = 1
         } else {
-          this.sliderPre = (left / this.maxX).toFixed(2)
+          this.sliderPre = (left / this.maxX).toFixed(3)
         }
       },
 
       sliderBtClick (type) {
-        if (type === 0) {
-          if (this.sliderPre <= 0) return
-          this.sliderPre = (parseFloat(this.sliderPre) - 0.01).toFixed(2)
-        } else {
-          if (this.sliderPre >= 1) return
-          this.sliderPre = (parseFloat(this.sliderPre) + 0.01).toFixed(2)
+        if (type === 0) {   // 缩小
+          if (this.sliderPre < 0.01 && this.sliderPre > 0) {
+            this.sliderPre = 0
+          } else if (this.sliderPre >= 0.01) {
+            this.sliderPre = (parseFloat(this.sliderPre) - 0.01).toFixed(3)
+          }
+        } else {   // 放大
+          if (this.sliderPre > 0.99 && this.sliderPre < 1) {
+            this.sliderPre = 1
+          } else if (this.sliderPre <= 0.99) {
+            this.sliderPre = (parseFloat(this.sliderPre) + 0.01).toFixed(3)
+          }
         }
-        this.newPosition = this.maxX * this.sliderPre
       }
     }
   }
@@ -118,11 +126,13 @@
     height: 400px;
     overflow: hidden;
     background: #e7f6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .imgSource {
     display: block;
-    width: 100%;
   }
 
   .handleBox {
