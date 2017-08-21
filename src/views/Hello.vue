@@ -2,6 +2,7 @@
   <div class="hello">
     <h1>{{ msg }}</h1>
     <router-link to="clip">imageClip</router-link>
+    <router-link to="canvas">canvas</router-link>
   </div>
 </template>
 

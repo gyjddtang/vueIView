@@ -18,7 +18,7 @@
     },
     data () {
       return {
-        imgSrc: require('../assets/image.jpg')
+        imgSrc: require('../assets/image1.png')
       }
     }
   }

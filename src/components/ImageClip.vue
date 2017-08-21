@@ -4,21 +4,26 @@
 
 <template lang="html">
   <div class="imageClip">
-    <div class="imgSourceBox">
-      <img class="imgSource" :src="src" :style="imgSource">
-    </div>
+    <!--<div-->
+      <!--class="imgSourceBox"-->
+      <!--ref="imgDragBox"-->
+      <!--@mousedown.prevent="imgDragStart"-->
+      <!--@mouseout.prevent="imgDragEnd"-->
+    <!--&gt;-->
+      <!--<img class="imgSource" :src="src" :style="imgSourceStyle" ref="image">-->
+    <!--</div>-->
     <div class="handleBox">
-      <div class="handleBt" @click="sliderBtClick(0)">
+      <div class="handleBt" @click="minusBtClick">
         <div class="minus"></div>
       </div>
       <div class="sliderBox" :style="sliderBoxStyle" ref="sliderBox">
         <div
-          :class="['slider', { dragging: dragging }]"
-          @mousedown.prevent="mousedown"
+          :class="['slider', { dragging: sliderDragging }]"
+          @mousedown.prevent="sliderStart"
           :style="sliderStyle"
         ></div>
       </div>
-      <div class="handleBt" @click="sliderBtClick(1)">
+      <div class="handleBt" @click="plusBtClick">
         <div class="plus"></div>
       </div>
     </div>
@@ -34,10 +39,22 @@
     data () {
       return {
         sliderPre: 0,
-        newPosition: 0,
-        startX: 0,
-        maxX: 480,
-        dragging: false
+        sliderPos: 0,
+        sliderStartX: 0,
+        sliderMaxX: 480,
+        sliderDragging: false,
+        imgStartXY: {
+          x: 0,
+          y: 0
+        },
+        imgStartTranslate: {
+          x: 0,
+          y: 0
+        },
+        imgNewXY: {
+          x: 0,
+          y: 0
+        }
       }
     },
     computed: {
@@ -50,66 +67,95 @@
 
       sliderStyle: function () {
         return {
-          left: `${this.maxX * this.sliderPre - 10}px`
+          left: `${this.sliderMaxX * this.sliderPre - 10}px`
         }
       },
 
-      imgSource: function () {
+      imgSourceStyle: function () {
         return {
-          transform: `scale(${this.sliderPre})`
+          transform: `scale(${this.sliderPre}) translate(${this.imgNewXY.x}px, ${this.imgNewXY.y}px)`
         }
       }
     },
     mounted () {
-      this.maxX = this.$refs.sliderBox.offsetWidth
+      this.sliderMaxX = this.$refs.sliderBox.offsetWidth
       this.sliderPre = 0.5
+      this.sliderPos = this.sliderMaxX * this.sliderPre
     },
     methods: {
-      mousedown (e) {
+      imgDragStart (e) {
+        this.imgStartXY.x = e.clientX
+        this.imgStartXY.y = e.clientY
+        this.$refs.imgDragBox.addEventListener('mousemove', this.imgDraging)
+        this.$refs.imgDragBox.addEventListener('mouseup', this.imgDragEnd)
+      },
+
+      imgDraging (e) {
+        this.imgNewXY.x = this.imgStartTranslate.x + e.clientX - this.imgStartXY.x
+        this.imgNewXY.y = this.imgStartTranslate.y + e.clientY - this.imgStartXY.y
+      },
+
+      imgDragEnd (e) {
+        this.$refs.imgDragBox.removeEventListener('mousemove', this.imgDraging)
+        this.$refs.imgDragBox.removeEventListener('mouseup', this.imgDragEnd)
+        let imgTransform = this.$refs.image.style.transform
+        let translateX = imgTransform.split(' ')[1].slice(10, imgTransform.split(' ')[1].length - 3)
+        let translateY = imgTransform.split(' ')[2].slice(0, imgTransform.split(' ')[2].length - 3)
+        this.imgStartTranslate.x = parseFloat(translateX)
+        this.imgStartTranslate.y = parseFloat(translateY)
+      },
+
+      sliderStart (e) {
         if (this.dragging) return
-        this.dragging = true
-        this.startX = e.clientX
-        window.addEventListener('mousemove', this.mouseover)
-        window.addEventListener('mouseup', this.mouseup)
+        this.sliderDragging = true
+        this.sliderStartX = e.clientX
+        window.addEventListener('mousemove', this.sliderDargging)
+        window.addEventListener('mouseup', this.sliderEnd)
       },
 
-      mouseup (e) {
-        this.dragging = false
-        window.removeEventListener('mousemove', this.mouseover)
-        window.removeEventListener('mouseup', this.mouseup)
-
-        this.setSliderPre(e)
-      },
-
-      mouseover (e) {
-        this.setSliderPre(e)
-      },
-
-      setSliderPre (e) {
-        let left = this.maxX * this.sliderPre + e.clientX - this.startX
-        this.startX = e.clientX
+      sliderDargging (e) {
+        let left = this.sliderPos + e.clientX - this.sliderStartX
         if (left <= 0) {
           this.sliderPre = 0
-        } else if (left >= this.maxX) {
+        } else if (left >= this.sliderMaxX) {
           this.sliderPre = 1
         } else {
-          this.sliderPre = (left / this.maxX).toFixed(3)
+          this.sliderPre = parseFloat((left / this.sliderMaxX).toFixed(3))
         }
       },
 
-      sliderBtClick (type) {
-        if (type === 0) {   // 缩小
-          if (this.sliderPre < 0.01 && this.sliderPre > 0) {
-            this.sliderPre = 0
-          } else if (this.sliderPre >= 0.01) {
-            this.sliderPre = (parseFloat(this.sliderPre) - 0.01).toFixed(3)
-          }
-        } else {   // 放大
-          if (this.sliderPre > 0.99 && this.sliderPre < 1) {
-            this.sliderPre = 1
-          } else if (this.sliderPre <= 0.99) {
-            this.sliderPre = (parseFloat(this.sliderPre) + 0.01).toFixed(3)
-          }
+      sliderEnd (e) {
+        this.sliderDragging = false
+        window.removeEventListener('mousemove', this.sliderDargging)
+        window.removeEventListener('mouseup', this.sliderEnd)
+
+        let left = this.sliderPos + e.clientX - this.sliderStartX
+        if (left <= 0) {
+          this.sliderPos = 0
+        } else if (left >= this.sliderMaxX) {
+          this.sliderPos = this.sliderMaxX
+        } else {
+          this.sliderPos = left
+        }
+      },
+
+      plusBtClick () {
+        if (this.sliderPre > 0.99 && this.sliderPre < 1) {
+          this.sliderPre = 1
+          this.sliderPos = this.sliderMaxX
+        } else if (this.sliderPre <= 0.99) {
+          this.sliderPre = (parseFloat(this.sliderPre) + 0.01).toFixed(3)
+          this.sliderPos = this.sliderMaxX * this.sliderPre
+        }
+      },
+
+      minusBtClick () {
+        if (this.sliderPre < 0.01 && this.sliderPre > 0) {
+          this.sliderPre = 0
+          this.sliderPos = 0
+        } else if (this.sliderPre >= 0.01) {
+          this.sliderPre = (parseFloat(this.sliderPre) - 0.01).toFixed(3)
+          this.sliderPos = this.sliderMaxX * this.sliderPre
         }
       }
     }
@@ -129,10 +175,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: grab;
   }
 
   .imgSource {
     display: block;
+    user-select: none;
   }
 
   .handleBox {
