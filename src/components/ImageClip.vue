@@ -4,14 +4,15 @@
 
 <template lang="html">
   <div class="imageClip">
-    <!--<div-->
-      <!--class="imgSourceBox"-->
-      <!--ref="imgDragBox"-->
-      <!--@mousedown.prevent="imgDragStart"-->
-      <!--@mouseout.prevent="imgDragEnd"-->
-    <!--&gt;-->
-      <!--<img class="imgSource" :src="src" :style="imgSourceStyle" ref="image">-->
-    <!--</div>-->
+    <div
+      class="imgSourceBox"
+      ref="imgDragBox"
+      @mousedown.prevent="imgDragStart"
+    >
+      <img class="imgSource" :src="src" :style="imgSourceStyle" ref="image">
+      <canvas ref="canvas" width="600" height="400"></canvas>
+      <canvas ref="clipCvs" :width="clipSize" :height="clipSize"></canvas>
+    </div>
     <div class="handleBox">
       <div class="handleBt" @click="minusBtClick">
         <div class="minus"></div>
@@ -26,6 +27,10 @@
       <div class="handleBt" @click="plusBtClick">
         <div class="plus"></div>
       </div>
+    </div>
+    <div class="clipHandle">
+      <button @click="clipClick">确定</button>
+      <button @click="cancel">取消</button>
     </div>
   </div>
 </template>
@@ -47,14 +52,15 @@
           x: 0,
           y: 0
         },
-        imgStartTranslate: {
+        imgLastXY: {
           x: 0,
           y: 0
         },
         imgNewXY: {
           x: 0,
           y: 0
-        }
+        },
+        clipSize: 360
       }
     },
     computed: {
@@ -73,14 +79,16 @@
 
       imgSourceStyle: function () {
         return {
-          transform: `scale(${this.sliderPre}) translate(${this.imgNewXY.x}px, ${this.imgNewXY.y}px)`
+          transform: `translate(${this.imgNewXY.x}px, ${this.imgNewXY.y}px) scale(${this.sliderPre + 0.5})`
         }
       }
     },
     mounted () {
+      // 设置初始值
       this.sliderMaxX = this.$refs.sliderBox.offsetWidth
       this.sliderPre = 0.5
       this.sliderPos = this.sliderMaxX * this.sliderPre
+      this.initCanvas()
     },
     methods: {
       imgDragStart (e) {
@@ -88,21 +96,30 @@
         this.imgStartXY.y = e.clientY
         this.$refs.imgDragBox.addEventListener('mousemove', this.imgDraging)
         this.$refs.imgDragBox.addEventListener('mouseup', this.imgDragEnd)
+        this.$refs.imgDragBox.addEventListener('mouseleave', this.imgDragEnd)
       },
 
       imgDraging (e) {
-        this.imgNewXY.x = this.imgStartTranslate.x + e.clientX - this.imgStartXY.x
-        this.imgNewXY.y = this.imgStartTranslate.y + e.clientY - this.imgStartXY.y
+        this.imgNewXY.x = this.imgLastXY.x + e.clientX - this.imgStartXY.x
+        this.imgNewXY.y = this.imgLastXY.y + e.clientY - this.imgStartXY.y
       },
 
       imgDragEnd (e) {
         this.$refs.imgDragBox.removeEventListener('mousemove', this.imgDraging)
         this.$refs.imgDragBox.removeEventListener('mouseup', this.imgDragEnd)
-        let imgTransform = this.$refs.image.style.transform
-        let translateX = imgTransform.split(' ')[1].slice(10, imgTransform.split(' ')[1].length - 3)
-        let translateY = imgTransform.split(' ')[2].slice(0, imgTransform.split(' ')[2].length - 3)
-        this.imgStartTranslate.x = parseFloat(translateX)
-        this.imgStartTranslate.y = parseFloat(translateY)
+        this.$refs.imgDragBox.removeEventListener('mouseleave', this.imgDragEnd)
+        let translate = this.getTranslate(this.$refs.image)
+        this.imgLastXY.x = parseFloat(translate.x)
+        this.imgLastXY.y = parseFloat(translate.y)
+      },
+
+      getTranslate (ele) {
+        let transform = ele.style.transform.split(' ')
+        return {
+          x: Number(transform[0].slice(10, transform[0].length - 3)),
+          y: Number(transform[1].slice(0, transform[1].length - 3)),
+          scale: Number(transform[2].slice(6, transform[2].length - 1))
+        }
       },
 
       sliderStart (e) {
@@ -157,6 +174,46 @@
           this.sliderPre = (parseFloat(this.sliderPre) - 0.01).toFixed(3)
           this.sliderPos = this.sliderMaxX * this.sliderPre
         }
+      },
+
+      initCanvas () {
+        // 遮罩层
+        let w = this.$refs.canvas.width
+        let h = this.$refs.canvas.height
+        let ctx = this.$refs.canvas.getContext('2d')
+        ctx.save()
+        ctx.fillStyle = 'rgba(0, 0, 0, .4)'
+        ctx.fillRect(0, 0, w, h)
+        ctx.restore()
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.beginPath()
+        ctx.arc(w / 2, h / 2, this.clipSize / 2, 0, 2 * Math.PI)
+        ctx.fill()
+      },
+
+      clipClick () {
+        let clipCvs = this.$refs.clipCvs
+        let ctx = clipCvs.getContext('2d')
+        let image = this.$refs.image
+        let transform = this.getTranslate(image)
+        let w = image.width * transform.scale
+        let h = image.height * transform.scale
+        let dx = -(w / 2) + transform.x + this.clipSize / 2
+        let dy = -(h / 2) + transform.y + this.clipSize / 2
+        ctx.clearRect(0, 0, this.clipSize, this.clipSize)
+        ctx.beginPath()
+        ctx.arc(this.clipSize / 2, this.clipSize / 2, this.clipSize / 2, 0, 2 * Math.PI)
+        ctx.clip()
+        ctx.drawImage(image, dx, dy, w, h)
+        // 返回结果
+        clipCvs.toBlob(res => {
+          this.$emit('success', { base64: clipCvs.toDataURL(), blob: res })
+        })
+      },
+
+      cancel () {
+        let ctx = this.$refs.clipCvs.getContext('2d')
+        ctx.clearRect(0, 0, this.clipSize, this.clipSize)
       }
     }
   }
@@ -171,11 +228,26 @@
     width: 100%;
     height: 400px;
     overflow: hidden;
-    background: #e7f6ff;
+    background: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: grab;
+    user-select: none;
+    position: relative;
+  }
+
+  .imgSourceBox canvas:first-of-type {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .imgSourceBox canvas:last-of-type {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -10;
   }
 
   .imgSource {
@@ -264,5 +336,15 @@
     background: linear-gradient(-180deg, #FFFFFF 0%, #4db3ff 97%);
     border-color: #4db3ff;
     cursor: grabbing;
+  }
+
+  .clipHandle {
+    margin-top: 40px;
+  }
+
+  .clipHandle button {
+    width: 80px;
+    line-height: 30px;
+    margin-right: 10px;
   }
 </style>

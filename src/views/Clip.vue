@@ -4,7 +4,8 @@
 
 <template lang="html">
   <div class="clipTest">
-    <ImageClip :src="imgSrc" />
+    <ImageClip :src="imgSrc" @success="clipResult" />
+    <img :src="clipSrc">
   </div>
 </template>
 
@@ -18,7 +19,14 @@
     },
     data () {
       return {
-        imgSrc: require('../assets/image1.png')
+        imgSrc: require('../assets/image.jpg'),
+        clipSrc: void 0
+      }
+    },
+    methods: {
+      clipResult ({ base64, blob }) {
+        this.clipSrc = base64
+        console.log(blob)
       }
     }
   }
