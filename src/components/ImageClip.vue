@@ -200,7 +200,9 @@
         let h = image.height * transform.scale
         let dx = -(w / 2) + transform.x + this.clipSize / 2
         let dy = -(h / 2) + transform.y + this.clipSize / 2
-        ctx.clearRect(0, 0, this.clipSize, this.clipSize)
+        ctx.restore()   // 重置到最近保存属性
+        ctx.clearRect(0, 0, this.clipSize, this.clipSize)   // 清除画布
+        ctx.save()
         ctx.beginPath()
         ctx.arc(this.clipSize / 2, this.clipSize / 2, this.clipSize / 2, 0, 2 * Math.PI)
         ctx.clip()
@@ -213,7 +215,9 @@
 
       cancel () {
         let ctx = this.$refs.clipCvs.getContext('2d')
+        ctx.restore()
         ctx.clearRect(0, 0, this.clipSize, this.clipSize)
+        this.$emit('cancel')
       }
     }
   }

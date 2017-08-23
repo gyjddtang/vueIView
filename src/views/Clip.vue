@@ -4,7 +4,7 @@
 
 <template lang="html">
   <div class="clipTest">
-    <ImageClip :src="imgSrc" @success="clipResult" />
+    <ImageClip :src="imgSrc" @success="clipResult" @cancel="cancel" />
     <img :src="clipSrc">
   </div>
 </template>
@@ -27,6 +27,10 @@
       clipResult ({ base64, blob }) {
         this.clipSrc = base64
         console.log(blob)
+      },
+
+      cancel () {
+        this.clipSrc = null
       }
     }
   }
